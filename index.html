@@ -1,24 +1,109 @@
-<!DOCTYPE html>
+<html><meta charset='UTF-8'/><meta content='width=device-width, initial-scale=1, user-scalable=1, minimum-scale=1, maximum-scale=5' name='viewport'/><meta content='IE=edge' http-equiv='X-UA-Compatible'/>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"></script>
+  <script src="https://unpkg.com/typeit@8.7.0/dist/index.umd.js"></script>
+  <link href="https://htmlku.com/sayang/style.css" rel="stylesheet" type="text/css" />
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="../../../../favicon.ico">
-
-    <title>Source Barakallah Lakuma</title>
-
-    <!-- Bootstrap core CSS -->
-    <link href="../../css/editor.css" rel="stylesheet">
-
-    <!-- Custom styles for this template -->
-    <link href="narrow-jumbotron.css" rel="stylesheet">
-  </head>
-
-  <body><div data-component-video=""><video src="https://github.com/Meownic/Source/blob/main/BarakallahLakumaNice.mp3?raw=true" controls="" loop="" style="height: 100%; width: 100%;"></video></div>
-
-     <!-- /container -->
+  <title>Selamat Berbahagia Ust.Teja - Mudabbir Science Club Gen 2</title>
+  <link rel="icon" type="image/svg+xml" href="https://github.com/nevorium/nevorium.github.io/blob/main/kochengICON.jpeg?raw=true">
+  <meta name="description" content="Buka bentar yaa.. HTML feeldream.id">
+  <meta name="keywords" content="HTML, Bucin, Feeldream">
+  <meta name="author" content="Feeldream">
+  <!-- 
+  Made with love by Rayys!
   
+     Blog: feeldream.id
+     Instagram: @rayyarrr
+     TikTok: @feelthisray
+     
+  Thanks to all <3
+  -->
+</head>
+<body>
+	
+   <div id="bodyblur">
+     <!-- Wallpaper / Background --><img src="https://github.com/nevorium/nevorium.github.io/blob/main/Background1.png?raw=true" id="wallpaper"/>
+   </div>
+  
+  <div class="kumpulanstiker">
+         <!-- Stiker untuk Konten -->
+         <img src="https://feeldreams.github.io/g5.gif" id="stiker1"/>
+         <img src="https://feeldreams.github.io/gigitin.gif" id="stiker2"/>
+         <img src="https://feeldreams.github.io/mndkat.gif" id="stiker3"/>
+         <img src="https://feeldreams.github.io/cilukba.gif" id="stiker4"/>
+  </div>
 
+   <div id='Content'>
+   	
+     <div id="suratin" onClick="memulai();audio.play();">
+       <!-- Surat --><img src="https://rayyscoding.github.io/envelope.png"/>
+     </div>
+     <p id="ket">Klik Suratnya!</p>
+   
+     <div>
+      <!-- Foto Akhir -->
+      <img src="https://feeldreams.github.io/pandapanah.gif" id="fotoakhir" />
+      <img src="https://feeldreams.github.io/emawh.gif" id="fotoakhir2" />
+    </div>
+     <div><blockquote id='bq'>
+       <p id="kalimat"></p>
+       <p id="kalimatc"></p>
+     </blockquote></div>
+   
+     <!-- Tombol Kirim Pesan -->
+     <div id="Tombol">
+       <a onClick="sjawab()">
+         <b>💌 Balas</b>
+       </a>
+     </div>
+     
+   </div>
+
+<script src="https://htmlku.com/sayang/script.js"></script>
+<script src="https://htmlku.com/script.js"></script>
+
+<!-- Ganti Kata², Foto, Lagu di bawah ya
+1) Upload foto ke https://postimages.org
+     buat dapetin linknya
+2) Ganti Lagu Upload ke replit.com
+     atau bisa juga ke mailboxdrive.com -->https://feeldreams.github.io/
+
+<script type="text/javascript">
+  
+       async function jawab(){await swals.fire('Kirim pesan ke<br>WhatsApp aku, ya!');window.location = "https://api.whatsapp.com/send?phone=&text=" + pesanwhatsapp;}
+
+       async function audioAwal(){
+         audio = new Audio('https://meownic.github.io/empty_folder/BarakallahLakumaNice.mp3');showDiv();
+       } audioAwal();
+	
+       
+       async function pesan(){
+             	await swalst.fire({
+                  title: 'Ust.Tejaa....', 
+                  imageUrl: '' + stiker1.src,
+                  });   	
+                 await swalst.fire({
+                  title: 'Afwan kami ndak semua bisa hadir <br>karena masih di pondok... ',
+                  imageUrl: '' + stiker2.src,
+                  });
+                 await swalst.fire({
+                  title: 'Ni Faiz Tok yang buat<br>Tapi mudabbir lain juga <br>pasti mengucapkan',
+                  imageUrl: '' + stiker3.src,
+                  });
+                  await swalst.fire({
+                  title: 'jadi gini...🫣',
+                  imageUrl: '' + stiker4.src,
+                  });
+                  
+                  katangetik = "<b class='garismerah font2'>Selamat Atas Pernikahannya Tadz 💐</b><br><br><b>Barakallah Lakuma Wa Baraka \'alaikuma wa jama\'a baynakuma fii khair 😍<br>Mudah mudahan menjadi Keluarga yang Sakinah, Mawaddah, wa Rahmah until Jannah, <br><br>Selalu dalam lindungan Allah 💗<br>serta selalu diberi rahmat dan karunia-Nya💐</b>";
+                  katangetik2 = "Maaf ndak seberapa tadz... 🥰🫣😍";
+                  ktbwh2 = "Happy Wedding 💗";
+                  ktbwh3 = "Ikut Berbahagia... 🫣";
+                  
+                  pesanwhatsapp = "Selamat Atas Pernikahannya 💞🤍💝❣️";
+                 setTimeout(kpemb,200);
+            }
+</script>
 </body>
 </html>
