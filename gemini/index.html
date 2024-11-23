@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gemini Chatbot</title>
+    <style>
+        /* Basic styling for the chat interface */
+        #chat-container {
+            width: 400px;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .user {
+            background-color: #e0f7fa; /* Light blue */
+            text-align: right; /* Align user messages to the right */
+
+        }
+
+        .assistant {
+            background-color: #f1f8e9; /* Light green */
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+
+    </div>
+    <input type="text" id="user-input" placeholder="Enter your message">
+    <button onclick="sendMessage()">Send</button>
+
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const userInput = document.getElementById('user-input');
+
+        async function sendMessage() {
+            const userMessage = userInput.value;
+
+            if (userMessage.trim() === "") return; // Don't send empty messages
+
+
+            displayMessage(userMessage, 'user'); // Display user message
+
+            userInput.value = ''; // Clear input field
+
+
+
+            try {
+                const response = await fetchGeminiResponse(userMessage);
+                displayMessage(response, 'assistant');
+            } catch (error) {
+                displayMessage("Error: " + error, 'assistant');
+                console.error("Gemini API Error:", error);
+            }
+        }
+
+        async function fetchGeminiResponse(message) {
+            const apiKey = 'AIzaSyBNUXGdc9EDxk29s1PruRwceeIkj9DPJGA'; // **IMPORTANT:** Replace with your actual API key.  See below for secure key handling.
+            const apiUrl = 'https://api.generativeai.google.com/v1beta2/models/gemini-pro:generateText';
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+            };
+            const requestBody = {
+                "prompt": {
+                    "text": message
+                },
+                "temperature": 0.7,   // Adjust as needed
+                "maxOutputTokens": 1024 //Adjust the maximum number of tokens in the response
+            };
+
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json(); // Get the error details
+                throw new Error(errorData.error.message || "Gemini API request failed."); // Throw a more informative error
+            }
+
+
+
+            const data = await response.json();
+            return data.candidates[0].output; // Extract the generated text
+
+        }
+
+
+        function displayMessage(message, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role);
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+
+            // Scroll to the bottom to show the latest message
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+
+    </script>
+</body>
+</html>
