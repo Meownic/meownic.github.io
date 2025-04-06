@@ -1,245 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booklet Printer with File Extraction</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
-    <script src="https://unpkg.com/mammoth@1.4.0/mammoth.browser.min.js"></script>
+    <title>Booklet Formatter</title>
     <style>
-        /* [Styles from previous implementation...] */
-        .progress-bar {
-            width: 100%;
-            background-color: #f1f1f1;
-            border-radius: 5px;
-            margin: 10px 0;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
-        .progress {
-            height: 20px;
-            background-color: #4CAF50;
-            border-radius: 5px;
-            width: 0%;
-            transition: width 0.3s;
+        .container {
+            max-width: 800px;
+            margin: auto;
         }
-        .thumbnail {
-            max-width: 100px;
-            max-height: 100px;
+        .preview {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 5px 10px;
             margin: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📘 Booklet Printer with File Extraction</h1>
+        <h2>Booklet Formatter</h2>
         
-        <div class="controls">
-            <label for="totalPages">Total Halaman:</label>
-            <input type="number" id="totalPages" min="1" disabled>
-            <div class="progress-bar">
-                <div id="extractProgress" class="progress"></div>
-            </div>
+        <div>
+            <label>Jumlah Halaman: </label>
+            <input type="number" id="pageCount" min="4" step="4" value="4">
         </div>
-
-        <div id="dropZone" class="drop-zone">
-            <p>📂 Drag & drop PDF, Word, atau gambar di sini</p>
-            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;">
+        
+        <div>
+            <button onclick="generateLayout()">Generate Layout</button>
+            <button onclick="printBooklet()">Print</button>
         </div>
-        <div id="fileInfo"></div>
-        <div id="thumbnailPreview" style="margin: 15px 0;"></div>
-
-        <button id="generateBtn" disabled>Generate Booklet</button>
-        <button id="printBtn" disabled>Print Booklet</button>
-
-        <div id="previewArea" style="margin-top: 30px;"></div>
-        <div id="printStatus" class="print-status"></div>
+        
+        <div class="preview" id="preview">
+            Preview akan muncul di sini
+        </div>
     </div>
 
     <script>
-        // Initialize PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
-
-        // [DOM elements and basic event listeners from previous implementation...]
-
-        let uploadedFile = null;
-        let totalPages = 0;
-        let bookletData = [];
-        let pageContents = [];
-
-        async function handleFile(file) {
-            // Reset previous data
-            pageContents = [];
-            document.getElementById('thumbnailPreview').innerHTML = '';
-            showStatus('Memproses file...', 'success');
-
-            uploadedFile = file;
-            fileInfo.innerHTML = `File: <strong>${file.name}</strong> (${formatFileSize(file.size)})`;
+        function generateLayout() {
+            const pageCount = parseInt(document.getElementById('pageCount').value);
+            let layout = "Booklet Layout (2 pages per sheet, 2-sided):\n\n";
             
-            try {
-                if (file.type === 'application/pdf') {
-                    await extractPDFPages(file);
-                } 
-                else if (file.type.includes('wordprocessingml') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
-                    await extractWordPages(file);
-                } 
-                else if (file.type.match('image.*')) {
-                    await extractImagePages(file);
-                } 
-                else {
-                    throw new Error('Format file tidak didukung');
-                }
-
-                totalPages = pageContents.length;
-                totalPagesInput.value = totalPages;
-                totalPagesInput.disabled = false;
-                generateBtn.disabled = false;
+            // Pastikan jumlah halaman kelipatan 4
+            const adjustedPages = Math.ceil(pageCount / 4) * 4;
+            
+            // Hitung jumlah lembar
+            const sheets = adjustedPages / 4;
+            
+            // Generate layout untuk setiap lembar
+            for (let i = 0; i < sheets; i++) {
+                const frontLeft = adjustedPages - (i * 2);
+                const frontRight = i * 2 + 1;
+                const backLeft = i * 2 + 2;
+                const backRight = adjustedPages - (i * 2) - 1;
                 
-                showStatus(`Berhasil mengekstrak ${totalPages} halaman`, 'success');
-                renderThumbnails();
-            } 
-            catch (error) {
-                console.error('Error:', error);
-                showStatus(`Error: ${error.message}`, 'error');
-            }
-        }
-
-        async function extractPDFPages(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-            
-            for (let i = 1; i <= pdf.numPages; i++) {
-                updateProgress(i, pdf.numPages);
-                const page = await pdf.getPage(i);
-                const viewport = page.getViewport({ scale: 0.5 });
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                await page.render({
-                    canvasContext: context,
-                    viewport: viewport
-                }).promise;
-                
-                pageContents.push({
-                    number: i,
-                    content: canvas.toDataURL('image/jpeg'),
-                    text: await page.getTextContent()
-                });
-            }
-        }
-
-        async function extractWordPages(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const result = await mammoth.extractRawText({ arrayBuffer });
-            
-            // Split by page (simplified - in real usage you might need more complex parsing)
-            const pages = result.value.split('\f').filter(p => p.trim().length > 0);
-            
-            pages.forEach((pageText, index) => {
-                updateProgress(index + 1, pages.length);
-                pageContents.push({
-                    number: index + 1,
-                    content: null,
-                    text: pageText
-                });
-            });
-        }
-
-        async function extractImagePages(file) {
-            const imageUrl = URL.createObjectURL(file);
-            pageContents.push({
-                number: 1,
-                content: imageUrl,
-                text: `Gambar: ${file.name}`
-            });
-            updateProgress(1, 1);
-        }
-
-        function renderThumbnails() {
-            const container = document.getElementById('thumbnailPreview');
-            container.innerHTML = '<h3>Preview Halaman:</h3><div style="display: flex; flex-wrap: wrap;">';
-            
-            pageContents.forEach(page => {
-                if (page.content) {
-                    container.innerHTML += `
-                        <div style="margin: 5px; text-align: center;">
-                            <img src="${page.content}" class="thumbnail">
-                            <div>Halaman ${page.number}</div>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML += `
-                        <div style="margin: 5px; padding: 10px; border: 1px solid #ddd; max-width: 200px;">
-                            <h4>Halaman ${page.number}</h4>
-                            <p style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
-                                ${page.text || 'Tidak ada teks'}
-                            </p>
-                        </div>
-                    `;
-                }
-            });
-            
-            container.innerHTML += '</div>';
-        }
-
-        function updateProgress(current, total) {
-            const percent = Math.round((current / total) * 100);
-            document.getElementById('extractProgress').style.width = `${percent}%`;
-        }
-
-        function generateBooklet() {
-            totalPages = parseInt(totalPagesInput.value);
-            let N = totalPages;
-
-            if (N % 4 !== 0) {
-                N += 4 - (N % 4);
-                showStatus(`Menyesuaikan halaman menjadi ${N} (kelipatan 4)`, 'success');
-            }
-
-            bookletData = [];
-            for (let i = 0; i < N / 2; i += 2) {
-                const frontLeft = i + 1;
-                const frontRight = N - i;
-                const backLeft = N - i - 1;
-                const backRight = i + 2;
-
-                bookletData.push({ 
-                    side: 'FRONT',
-                    left: frontLeft,
-                    right: frontRight,
-                    leftContent: getPageContent(frontLeft),
-                    rightContent: getPageContent(frontRight)
-                });
-
-                bookletData.push({ 
-                    side: 'BACK',
-                    left: backLeft,
-                    right: backRight,
-                    leftContent: getPageContent(backLeft),
-                    rightContent: getPageContent(backRight)
-                });
-            }
-
-            renderPreview();
-            printBtn.disabled = false;
-            showStatus(`Booklet siap! Total ${N/4} lembar kertas diperlukan.`, 'success');
-        }
-
-        function getPageContent(pageNumber) {
-            if (pageNumber > pageContents.length) {
-                return `<div style="color: #999;">Halaman kosong</div>`;
+                layout += `Sheet ${i + 1}:\n`;
+                layout += `Front: Page ${frontLeft} | Page ${frontRight}\n`;
+                layout += `Back:  Page ${backLeft} | Page ${backRight}\n\n`;
             }
             
-            const page = pageContents[pageNumber - 1];
-            if (page.content) {
-                return `<img src="${page.content}" style="max-width: 100%; max-height: 100%;">`;
-            } else {
-                return `<div style="padding: 10px; overflow: hidden;">${page.text || 'Tidak ada konten'}</div>`;
-            }
+            document.getElementById('preview').innerText = layout;
         }
 
-        // [Rest of the functions from previous implementation...]
+        function printBooklet() {
+            window.print();
+        }
     </script>
 </body>
 </html>
