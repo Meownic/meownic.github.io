@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Booklet Formatter</title>
+    <title>Booklet Number Generator</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,11 +20,15 @@
             padding: 5px 10px;
             margin: 5px;
         }
+        select {
+            padding: 5px;
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Booklet Formatter</h2>
+        <h2>Booklet Number Generator</h2>
         
         <div>
             <label>Jumlah Halaman: </label>
@@ -32,42 +36,68 @@
         </div>
         
         <div>
-            <button onclick="generateLayout()">Generate Layout</button>
-            <button onclick="printBooklet()">Print</button>
+            <label>Mode Cetak: </label>
+            <select id="printMode">
+                <option value="auto">Otomatis</option>
+                <option value="manual">Manual</option>
+            </select>
+        </div>
+        
+        <div>
+            <button onclick="generateNumbers()">Generate Numbers</button>
+            <button onclick="copyNumbers()">Copy Numbers</button>
+            <button onclick="printNumbers()">Print</button>
         </div>
         
         <div class="preview" id="preview">
-            Preview akan muncul di sini
+            Nomor akan muncul di sini
         </div>
     </div>
 
     <script>
-        function generateLayout() {
+        function generateNumbers() {
             const pageCount = parseInt(document.getElementById('pageCount').value);
-            let layout = "Booklet Layout (2 pages per sheet, 2-sided):\n\n";
-            
-            // Pastikan jumlah halaman kelipatan 4
+            const printMode = document.getElementById('printMode').value;
             const adjustedPages = Math.ceil(pageCount / 4) * 4;
-            
-            // Hitung jumlah lembar
             const sheets = adjustedPages / 4;
+            let output = "";
             
-            // Generate layout untuk setiap lembar
-            for (let i = 0; i < sheets; i++) {
-                const frontLeft = adjustedPages - (i * 2);
-                const frontRight = i * 2 + 1;
-                const backLeft = i * 2 + 2;
-                const backRight = adjustedPages - (i * 2) - 1;
+            if (printMode === "manual") {
+                let frontPages = "Front Pages:\n";
+                let backPages = "Back Pages:\n";
                 
-                layout += `Sheet ${i + 1}:\n`;
-                layout += `Front: Page ${frontLeft} | Page ${frontRight}\n`;
-                layout += `Back:  Page ${backLeft} | Page ${backRight}\n\n`;
+                for (let i = 0; i < sheets; i++) {
+                    const frontLeft = adjustedPages - (i * 2);
+                    const frontRight = i * 2 + 1;
+                    const backLeft = i * 2 + 2;
+                    const backRight = adjustedPages - (i * 2) - 1;
+                    
+                    frontPages += `${frontLeft},${frontRight}\n`;
+                    backPages += `${backLeft},${backRight}\n`;
+                }
+                output = frontPages + "\n" + backPages;
+            } else {
+                output = "Page Order (Automatic):\n";
+                for (let i = 0; i < sheets; i++) {
+                    const frontLeft = adjustedPages - (i * 2);
+                    const frontRight = i * 2 + 1;
+                    const backLeft = i * 2 + 2;
+                    const backRight = adjustedPages - (i * 2) - 1;
+                    output += `${frontLeft},${frontRight},${backLeft},${backRight}\n`;
+                }
             }
             
-            document.getElementById('preview').innerText = layout;
+            document.getElementById('preview').innerText = output;
         }
 
-        function printBooklet() {
+        function copyNumbers() {
+            const text = document.getElementById('preview').innerText;
+            navigator.clipboard.writeText(text)
+                .then(() => alert('Numbers copied to clipboard!'))
+                .catch(err => alert('Failed to copy: ' + err));
+        }
+
+        function printNumbers() {
             window.print();
         }
     </script>
