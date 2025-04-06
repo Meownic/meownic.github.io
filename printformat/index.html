@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booklet Printer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: white;
+            white-space: pre-wrap;
+        }
+        .page-preview {
+            display: inline-block;
+            width: 100px;
+            height: 150px;
+            border: 1px solid #000;
+            margin: 5px;
+            text-align: center;
+            line-height: 150px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Booklet Printer</h1>
+        <label for="totalPages">Total Halaman Dokumen:</label>
+        <input type="number" id="totalPages" min="1" value="6">
+        <button onclick="generateBooklet()">Generate Booklet</button>
+        <button onclick="printBooklet()" id="printBtn" disabled>Print Booklet</button>
+        
+        <div id="output"></div>
+        <div id="preview"></div>
+    </div>
+
+    <script>
+        let bookletData = [];
+
+        function generateBooklet() {
+            const totalPages = parseInt(document.getElementById('totalPages').value);
+            let N = totalPages;
+
+            // Adjust to multiple of 4
+            if (N % 4 !== 0) {
+                N += 4 - (N % 4);
+            }
+
+            const printOrder = [];
+            for (let i = 0; i < N / 2; i += 2) {
+                // Front side (odd)
+                printOrder.push({ 
+                    side: 'FRONT', 
+                    left: i + 1, 
+                    right: N - i 
+                });
+                // Back side (even)
+                printOrder.push({ 
+                    side: 'BACK', 
+                    left: N - i - 1, 
+                    right: i + 2 
+                });
+            }
+
+            bookletData = printOrder;
+            displayOutput(printOrder, N);
+            document.getElementById('printBtn').disabled = false;
+        }
+
+        function displayOutput(printOrder, adjustedPages) {
+            const output = document.getElementById('output');
+            const preview = document.getElementById('preview');
+            let outputText = `Total halaman setelah disesuaikan: ${adjustedPages}\n\n`;
+            let previewHTML = '';
+
+            printOrder.forEach((page, index) => {
+                outputText += `${page.side}: ${page.right} (kanan) | ${page.left} (kiri)\n`;
+
+                // Create visual preview
+                previewHTML += `
+                    <div style="margin-bottom: 20px;">
+                        <h3>${page.side} SIDE</h3>
+                        <div style="display: flex;">
+                            <div class="page-preview">${page.left}</div>
+                            <div class="page-preview">${page.right}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            output.textContent = outputText;
+            preview.innerHTML = previewHTML;
+        }
+
+        function printBooklet() {
+            if (!bookletData.length) {
+                alert('Generate booklet terlebih dahulu!');
+                return;
+            }
+
+            // Create a print-friendly document
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Booklet Print</title>
+                        <style>
+                            body { font-family: Arial; }
+                            .sheet { 
+                                page-break-after: always; 
+                                margin: 20px; 
+                            }
+                            .page { 
+                                display: inline-block; 
+                                width: 45%; 
+                                height: 300px; 
+                                border: 1px dashed #ccc; 
+                                margin: 10px; 
+                                padding: 20px; 
+                                box-sizing: border-box;
+                                vertical-align: top;
+                            }
+                            @media print {
+                                .no-print { display: none; }
+                                body { margin: 0; padding: 0; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <h1 class="no-print">Booklet Printing Preview</h1>
+                        <p class="no-print">Pastikan printer diatur ke mode duplex (double-sided) dan 2 halaman per lembar.</p>
+                        ${generatePrintPages()}
+                        <script>
+                            window.onload = function() {
+                                setTimeout(function() {
+                                    window.print();
+                                    window.close();
+                                }, 500);
+                            };
+                        <\/script>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function generatePrintPages() {
+            let html = '';
+            for (let i = 0; i < bookletData.length; i += 2) {
+                const front = bookletData[i];
+                const back = bookletData[i+1];
+
+                html += `
+                    <div class="sheet">
+                        <h3>Lembar ${(i/2)+1} - Sisi Depan</h3>
+                        <div class="page" style="text-align: right;">Halaman ${front.right}</div>
+                        <div class="page">Halaman ${front.left}</div>
+                        
+                        <div style="margin-top: 50px;" class="no-print">
+                            <h3>Lembar ${(i/2)+1} - Sisi Belakang (Balik kertas)</h3>
+                            <div class="page" style="text-align: right;">Halaman ${back.right}</div>
+                            <div class="page">Halaman ${back.left}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            return html;
+        }
+    </script>
+</body>
+</html>
