@@ -3,66 +3,205 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Booklet Printer</title>
+    <title>Advanced Booklet Printer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 20px;
+            background: #f5f5f5;
         }
         .container {
-            border: 1px solid #ddd;
-            padding: 20px;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .drop-zone {
+            border: 3px dashed #4CAF50;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
             border-radius: 8px;
             background: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s;
         }
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
+        .drop-zone.highlight {
+            background: #e8f5e9;
+            border-color: #2E7D32;
         }
         button {
             background: #4CAF50;
             color: white;
             border: none;
+            padding: 12px 20px;
+            margin: 10px 5px;
+            border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
         }
-        #output {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            background: white;
-            white-space: pre-wrap;
+        button:hover {
+            background: #388E3C;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #fileInfo {
+            margin: 15px 0;
+            font-weight: bold;
+            color: #2E7D32;
         }
         .page-preview {
             display: inline-block;
-            width: 100px;
-            height: 150px;
-            border: 1px solid #000;
-            margin: 5px;
+            width: 120px;
+            height: 170px;
+            border: 1px solid #ddd;
+            margin: 8px;
             text-align: center;
-            line-height: 150px;
-            background: #fff;
+            line-height: 170px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            vertical-align: middle;
+        }
+        .page-number {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f7f0;
+            border-radius: 8px;
+        }
+        .print-status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2E7D32;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Booklet Printer</h1>
-        <label for="totalPages">Total Halaman Dokumen:</label>
-        <input type="number" id="totalPages" min="1" value="6">
-        <button onclick="generateBooklet()">Generate Booklet</button>
-        <button onclick="printBooklet()" id="printBtn" disabled>Print Booklet</button>
+        <h1>📘 Advanced Booklet Printer</h1>
+        <p>Upload dokumen Anda (PDF, Word, atau gambar) untuk dicetak sebagai booklet.</p>
         
-        <div id="output"></div>
-        <div id="preview"></div>
+        <div class="controls">
+            <label for="totalPages">Total Halaman (otomatis terisi setelah upload):</label>
+            <input type="number" id="totalPages" min="1" disabled>
+        </div>
+
+        <div id="dropZone" class="drop-zone">
+            <p>📂 Drag & drop file di sini atau klik untuk memilih</p>
+            <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;">
+        </div>
+        <div id="fileInfo"></div>
+
+        <button id="generateBtn" disabled>Generate Booklet</button>
+        <button id="printBtn" disabled>Print Booklet</button>
+
+        <div id="previewArea" style="margin-top: 30px;"></div>
+        <div id="printStatus" class="print-status"></div>
     </div>
 
     <script>
+        // Elemen DOM
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const totalPagesInput = document.getElementById('totalPages');
+        const generateBtn = document.getElementById('generateBtn');
+        const printBtn = document.getElementById('printBtn');
+        const previewArea = document.getElementById('previewArea');
+        const printStatus = document.getElementById('printStatus');
+
+        let uploadedFile = null;
+        let totalPages = 0;
         let bookletData = [];
 
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('highlight');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('highlight');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('highlight');
+            
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+        generateBtn.addEventListener('click', generateBooklet);
+        printBtn.addEventListener('click', printBooklet);
+
+        // Fungsi utama
+        function handleFile(file) {
+            // Validasi tipe file
+            const validTypes = ['application/pdf', 'application/msword', 
+                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                               'image/jpeg', 'image/png'];
+            
+            if (!validTypes.includes(file.type)) {
+                showStatus('Error: Hanya PDF, Word, atau gambar yang didukung', 'error');
+                return;
+            }
+
+            uploadedFile = file;
+            fileInfo.innerHTML = `File terpilih: <strong>${file.name}</strong> (${formatFileSize(file.size)})`;
+            
+            // Simulasikan ekstraksi jumlah halaman (dalam implementasi nyata, gunakan PDF.js untuk PDF)
+            totalPages = estimatePageCount(file);
+            totalPagesInput.value = totalPages;
+            totalPagesInput.disabled = false;
+            
+            generateBtn.disabled = false;
+            showStatus('File berhasil diupload. Klik "Generate Booklet" untuk melanjutkan.', 'success');
+        }
+
+        function estimatePageCount(file) {
+            // Ini adalah simulasi sederhana
+            // Implementasi nyata:
+            // - Untuk PDF: Gunakan PDF.js (https://mozilla.github.io/pdf.js/)
+            // - Untuk Word: Gunakan mammoth.js atau konversi ke PDF dulu
+            // - Untuk gambar: Hitung jumlah gambar yang diupload
+            return Math.max(4, Math.floor(Math.random() * 20) + 1); // Random 4-24 halaman untuk demo
+        }
+
         function generateBooklet() {
-            const totalPages = parseInt(document.getElementById('totalPages').value);
+            totalPages = parseInt(totalPagesInput.value);
             let N = totalPages;
 
             // Adjust to multiple of 4
@@ -70,125 +209,199 @@
                 N += 4 - (N % 4);
             }
 
-            const printOrder = [];
+            bookletData = [];
             for (let i = 0; i < N / 2; i += 2) {
-                // Front side (odd)
-                printOrder.push({ 
+                bookletData.push({ 
                     side: 'FRONT', 
                     left: i + 1, 
-                    right: N - i 
+                    right: N - i,
+                    leftContent: `Halaman ${i + 1}`,
+                    rightContent: `Halaman ${N - i}`
                 });
-                // Back side (even)
-                printOrder.push({ 
+                bookletData.push({ 
                     side: 'BACK', 
                     left: N - i - 1, 
-                    right: i + 2 
+                    right: i + 2,
+                    leftContent: `Halaman ${N - i - 1}`,
+                    rightContent: `Halaman ${i + 2}`
                 });
             }
 
-            bookletData = printOrder;
-            displayOutput(printOrder, N);
-            document.getElementById('printBtn').disabled = false;
+            renderPreview();
+            printBtn.disabled = false;
+            showStatus(`Booklet berhasil digenerate! Total ${N} halaman (${N/4} lembar kertas).`, 'success');
         }
 
-        function displayOutput(printOrder, adjustedPages) {
-            const output = document.getElementById('output');
-            const preview = document.getElementById('preview');
-            let outputText = `Total halaman setelah disesuaikan: ${adjustedPages}\n\n`;
-            let previewHTML = '';
-
-            printOrder.forEach((page, index) => {
-                outputText += `${page.side}: ${page.right} (kanan) | ${page.left} (kiri)\n`;
-
-                // Create visual preview
-                previewHTML += `
-                    <div style="margin-bottom: 20px;">
-                        <h3>${page.side} SIDE</h3>
-                        <div style="display: flex;">
-                            <div class="page-preview">${page.left}</div>
-                            <div class="page-preview">${page.right}</div>
+        function renderPreview() {
+            previewArea.innerHTML = '<h2>Preview Booklet</h2>';
+            
+            for (let i = 0; i < bookletData.length; i += 2) {
+                const front = bookletData[i];
+                const back = bookletData[i+1];
+                
+                const sheetDiv = document.createElement('div');
+                sheetDiv.style.marginBottom = '40px';
+                sheetDiv.innerHTML = `
+                    <h3>Lembar ${(i/2)+1}</h3>
+                    <div style="display: flex; justify-content: center;">
+                        <div style="margin-right: 50px;">
+                            <h4>Sisi Depan</h4>
+                            <div style="display: flex;">
+                                <div class="page-preview">
+                                    ${front.rightContent}
+                                    <div class="page-number">${front.right}</div>
+                                </div>
+                                <div class="page-preview">
+                                    ${front.leftContent}
+                                    <div class="page-number">${front.left}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Sisi Belakang (Balik kertas)</h4>
+                            <div style="display: flex;">
+                                <div class="page-preview">
+                                    ${back.rightContent}
+                                    <div class="page-number">${back.right}</div>
+                                </div>
+                                <div class="page-preview">
+                                    ${back.leftContent}
+                                    <div class="page-number">${back.left}</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
-            });
-
-            output.textContent = outputText;
-            preview.innerHTML = previewHTML;
+                previewArea.appendChild(sheetDiv);
+            }
         }
 
         function printBooklet() {
             if (!bookletData.length) {
-                alert('Generate booklet terlebih dahulu!');
+                showStatus('Error: Silahkan generate booklet terlebih dahulu', 'error');
                 return;
             }
 
-            // Create a print-friendly document
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
+            let printContent = `
                 <html>
                     <head>
-                        <title>Booklet Print</title>
+                        <title>Cetak Booklet - ${uploadedFile.name}</title>
                         <style>
-                            body { font-family: Arial; }
+                            @page { size: A4; margin: 0; }
+                            body { font-family: Arial; margin: 0; padding: 0; }
                             .sheet { 
                                 page-break-after: always; 
-                                margin: 20px; 
+                                width: 210mm;
+                                height: 297mm;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                                align-items: center;
+                            }
+                            .page-container { 
+                                display: flex; 
+                                width: 180mm;
+                                justify-content: center;
                             }
                             .page { 
-                                display: inline-block; 
-                                width: 45%; 
-                                height: 300px; 
-                                border: 1px dashed #ccc; 
-                                margin: 10px; 
-                                padding: 20px; 
+                                width: 85mm; 
+                                height: 120mm; 
+                                border: 1px solid #ddd; 
+                                margin: 5mm; 
+                                padding: 10mm;
                                 box-sizing: border-box;
-                                vertical-align: top;
+                                position: relative;
+                            }
+                            .page-number { 
+                                position: absolute;
+                                bottom: 2mm;
+                                right: 2mm;
+                                font-size: 10pt;
+                                color: #666;
+                            }
+                            .print-info {
+                                text-align: center;
+                                margin-bottom: 10mm;
+                                font-size: 12pt;
+                                color: #555;
                             }
                             @media print {
                                 .no-print { display: none; }
-                                body { margin: 0; padding: 0; }
                             }
                         </style>
                     </head>
                     <body>
-                        <h1 class="no-print">Booklet Printing Preview</h1>
-                        <p class="no-print">Pastikan printer diatur ke mode duplex (double-sided) dan 2 halaman per lembar.</p>
-                        ${generatePrintPages()}
-                        <script>
-                            window.onload = function() {
-                                setTimeout(function() {
-                                    window.print();
-                                    window.close();
-                                }, 500);
-                            };
-                        <\/script>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
-        }
+                        <div class="no-print print-info">
+                            <h1>Booklet Printing</h1>
+                            <p>File: ${uploadedFile.name}</p>
+                            <p>Total: ${totalPages} halaman (${totalPages/4} lembar kertas)</p>
+                            <p>Pastikan printer diatur ke: <strong>Duplex Printing</strong> dan <strong>2 Pages Per Sheet</strong></p>
+                        </div>
+            `;
 
-        function generatePrintPages() {
-            let html = '';
             for (let i = 0; i < bookletData.length; i += 2) {
                 const front = bookletData[i];
                 const back = bookletData[i+1];
 
-                html += `
+                printContent += `
                     <div class="sheet">
-                        <h3>Lembar ${(i/2)+1} - Sisi Depan</h3>
-                        <div class="page" style="text-align: right;">Halaman ${front.right}</div>
-                        <div class="page">Halaman ${front.left}</div>
-                        
-                        <div style="margin-top: 50px;" class="no-print">
-                            <h3>Lembar ${(i/2)+1} - Sisi Belakang (Balik kertas)</h3>
-                            <div class="page" style="text-align: right;">Halaman ${back.right}</div>
-                            <div class="page">Halaman ${back.left}</div>
+                        <div class="page-container">
+                            <div class="page" style="text-align: right;">
+                                ${front.rightContent}
+                                <div class="page-number">${front.right}</div>
+                            </div>
+                            <div class="page">
+                                ${front.leftContent}
+                                <div class="page-number">${front.left}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sheet">
+                        <div class="page-container">
+                            <div class="page" style="text-align: right;">
+                                ${back.rightContent}
+                                <div class="page-number">${back.right}</div>
+                            </div>
+                            <div class="page">
+                                ${back.leftContent}
+                                <div class="page-number">${back.left}</div>
+                            </div>
                         </div>
                     </div>
                 `;
             }
-            return html;
+
+            printContent += `
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                window.close();
+                            }, 300);
+                        };
+                    <\/script>
+                </body>
+            </html>
+            `;
+
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            showStatus('Membuka jendela cetak...', 'success');
+        }
+
+        // Helper functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showStatus(message, type) {
+            printStatus.textContent = message;
+            printStatus.className = 'print-status ' + type;
         }
     </script>
 </body>
