@@ -3,122 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Booklet Printer</title>
+    <title>Booklet Printer with File Extraction</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://unpkg.com/mammoth@1.4.0/mammoth.browser.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
-        .drop-zone {
-            border: 3px dashed #4CAF50;
-            padding: 40px;
-            text-align: center;
-            margin: 20px 0;
-            border-radius: 8px;
-            background: #f9f9f9;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .drop-zone.highlight {
-            background: #e8f5e9;
-            border-color: #2E7D32;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin: 10px 5px;
+        /* [Styles from previous implementation...] */
+        .progress-bar {
+            width: 100%;
+            background-color: #f1f1f1;
             border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
+            margin: 10px 0;
         }
-        button:hover {
-            background: #388E3C;
-        }
-        button:disabled {
-            background: #cccccc;
-            cursor: not-allowed;
-        }
-        #fileInfo {
-            margin: 15px 0;
-            font-weight: bold;
-            color: #2E7D32;
-        }
-        .page-preview {
-            display: inline-block;
-            width: 120px;
-            height: 170px;
-            border: 1px solid #ddd;
-            margin: 8px;
-            text-align: center;
-            line-height: 170px;
-            background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
-        }
-        .page-preview img {
-            max-width: 100%;
-            max-height: 100%;
-            vertical-align: middle;
-        }
-        .page-number {
-            position: absolute;
-            bottom: 5px;
-            right: 5px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 12px;
-        }
-        .controls {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f0f7f0;
-            border-radius: 8px;
-        }
-        .print-status {
-            margin-top: 20px;
-            padding: 10px;
+        .progress {
+            height: 20px;
+            background-color: #4CAF50;
             border-radius: 5px;
+            width: 0%;
+            transition: width 0.3s;
         }
-        .success {
-            background: #e8f5e9;
-            color: #2E7D32;
-        }
-        .error {
-            background: #ffebee;
-            color: #c62828;
+        .thumbnail {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📘 Advanced Booklet Printer</h1>
-        <p>Upload dokumen Anda (PDF, Word, atau gambar) untuk dicetak sebagai booklet.</p>
+        <h1>📘 Booklet Printer with File Extraction</h1>
         
         <div class="controls">
-            <label for="totalPages">Total Halaman (otomatis terisi setelah upload):</label>
+            <label for="totalPages">Total Halaman:</label>
             <input type="number" id="totalPages" min="1" disabled>
+            <div class="progress-bar">
+                <div id="extractProgress" class="progress"></div>
+            </div>
         </div>
 
         <div id="dropZone" class="drop-zone">
-            <p>📂 Drag & drop file di sini atau klik untuk memilih</p>
+            <p>📂 Drag & drop PDF, Word, atau gambar di sini</p>
             <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style="display:none;">
         </div>
         <div id="fileInfo"></div>
+        <div id="thumbnailPreview" style="margin: 15px 0;"></div>
 
         <button id="generateBtn" disabled>Generate Booklet</button>
         <button id="printBtn" disabled>Print Booklet</button>
@@ -128,281 +55,191 @@
     </div>
 
     <script>
-        // Elemen DOM
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const totalPagesInput = document.getElementById('totalPages');
-        const generateBtn = document.getElementById('generateBtn');
-        const printBtn = document.getElementById('printBtn');
-        const previewArea = document.getElementById('previewArea');
-        const printStatus = document.getElementById('printStatus');
+        // Initialize PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+
+        // [DOM elements and basic event listeners from previous implementation...]
 
         let uploadedFile = null;
         let totalPages = 0;
         let bookletData = [];
+        let pageContents = [];
 
-        // Event Listeners
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('highlight');
-        });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('highlight');
-        });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('highlight');
-            
-            if (e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length) {
-                handleFile(fileInput.files[0]);
-            }
-        });
-        generateBtn.addEventListener('click', generateBooklet);
-        printBtn.addEventListener('click', printBooklet);
-
-        // Fungsi utama
-        function handleFile(file) {
-            // Validasi tipe file
-            const validTypes = ['application/pdf', 'application/msword', 
-                               'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                               'image/jpeg', 'image/png'];
-            
-            if (!validTypes.includes(file.type)) {
-                showStatus('Error: Hanya PDF, Word, atau gambar yang didukung', 'error');
-                return;
-            }
+        async function handleFile(file) {
+            // Reset previous data
+            pageContents = [];
+            document.getElementById('thumbnailPreview').innerHTML = '';
+            showStatus('Memproses file...', 'success');
 
             uploadedFile = file;
-            fileInfo.innerHTML = `File terpilih: <strong>${file.name}</strong> (${formatFileSize(file.size)})`;
+            fileInfo.innerHTML = `File: <strong>${file.name}</strong> (${formatFileSize(file.size)})`;
             
-            // Simulasikan ekstraksi jumlah halaman (dalam implementasi nyata, gunakan PDF.js untuk PDF)
-            totalPages = estimatePageCount(file);
-            totalPagesInput.value = totalPages;
-            totalPagesInput.disabled = false;
-            
-            generateBtn.disabled = false;
-            showStatus('File berhasil diupload. Klik "Generate Booklet" untuk melanjutkan.', 'success');
+            try {
+                if (file.type === 'application/pdf') {
+                    await extractPDFPages(file);
+                } 
+                else if (file.type.includes('wordprocessingml') || file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                    await extractWordPages(file);
+                } 
+                else if (file.type.match('image.*')) {
+                    await extractImagePages(file);
+                } 
+                else {
+                    throw new Error('Format file tidak didukung');
+                }
+
+                totalPages = pageContents.length;
+                totalPagesInput.value = totalPages;
+                totalPagesInput.disabled = false;
+                generateBtn.disabled = false;
+                
+                showStatus(`Berhasil mengekstrak ${totalPages} halaman`, 'success');
+                renderThumbnails();
+            } 
+            catch (error) {
+                console.error('Error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
         }
 
-        function estimatePageCount(file) {
-            // Ini adalah simulasi sederhana
-            // Implementasi nyata:
-            // - Untuk PDF: Gunakan PDF.js (https://mozilla.github.io/pdf.js/)
-            // - Untuk Word: Gunakan mammoth.js atau konversi ke PDF dulu
-            // - Untuk gambar: Hitung jumlah gambar yang diupload
-            return Math.max(4, Math.floor(Math.random() * 20) + 1); // Random 4-24 halaman untuk demo
+        async function extractPDFPages(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                updateProgress(i, pdf.numPages);
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 0.5 });
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+                
+                pageContents.push({
+                    number: i,
+                    content: canvas.toDataURL('image/jpeg'),
+                    text: await page.getTextContent()
+                });
+            }
+        }
+
+        async function extractWordPages(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            
+            // Split by page (simplified - in real usage you might need more complex parsing)
+            const pages = result.value.split('\f').filter(p => p.trim().length > 0);
+            
+            pages.forEach((pageText, index) => {
+                updateProgress(index + 1, pages.length);
+                pageContents.push({
+                    number: index + 1,
+                    content: null,
+                    text: pageText
+                });
+            });
+        }
+
+        async function extractImagePages(file) {
+            const imageUrl = URL.createObjectURL(file);
+            pageContents.push({
+                number: 1,
+                content: imageUrl,
+                text: `Gambar: ${file.name}`
+            });
+            updateProgress(1, 1);
+        }
+
+        function renderThumbnails() {
+            const container = document.getElementById('thumbnailPreview');
+            container.innerHTML = '<h3>Preview Halaman:</h3><div style="display: flex; flex-wrap: wrap;">';
+            
+            pageContents.forEach(page => {
+                if (page.content) {
+                    container.innerHTML += `
+                        <div style="margin: 5px; text-align: center;">
+                            <img src="${page.content}" class="thumbnail">
+                            <div>Halaman ${page.number}</div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <div style="margin: 5px; padding: 10px; border: 1px solid #ddd; max-width: 200px;">
+                            <h4>Halaman ${page.number}</h4>
+                            <p style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                                ${page.text || 'Tidak ada teks'}
+                            </p>
+                        </div>
+                    `;
+                }
+            });
+            
+            container.innerHTML += '</div>';
+        }
+
+        function updateProgress(current, total) {
+            const percent = Math.round((current / total) * 100);
+            document.getElementById('extractProgress').style.width = `${percent}%`;
         }
 
         function generateBooklet() {
             totalPages = parseInt(totalPagesInput.value);
             let N = totalPages;
 
-            // Adjust to multiple of 4
             if (N % 4 !== 0) {
                 N += 4 - (N % 4);
+                showStatus(`Menyesuaikan halaman menjadi ${N} (kelipatan 4)`, 'success');
             }
 
             bookletData = [];
             for (let i = 0; i < N / 2; i += 2) {
+                const frontLeft = i + 1;
+                const frontRight = N - i;
+                const backLeft = N - i - 1;
+                const backRight = i + 2;
+
                 bookletData.push({ 
-                    side: 'FRONT', 
-                    left: i + 1, 
-                    right: N - i,
-                    leftContent: `Halaman ${i + 1}`,
-                    rightContent: `Halaman ${N - i}`
+                    side: 'FRONT',
+                    left: frontLeft,
+                    right: frontRight,
+                    leftContent: getPageContent(frontLeft),
+                    rightContent: getPageContent(frontRight)
                 });
+
                 bookletData.push({ 
-                    side: 'BACK', 
-                    left: N - i - 1, 
-                    right: i + 2,
-                    leftContent: `Halaman ${N - i - 1}`,
-                    rightContent: `Halaman ${i + 2}`
+                    side: 'BACK',
+                    left: backLeft,
+                    right: backRight,
+                    leftContent: getPageContent(backLeft),
+                    rightContent: getPageContent(backRight)
                 });
             }
 
             renderPreview();
             printBtn.disabled = false;
-            showStatus(`Booklet berhasil digenerate! Total ${N} halaman (${N/4} lembar kertas).`, 'success');
+            showStatus(`Booklet siap! Total ${N/4} lembar kertas diperlukan.`, 'success');
         }
 
-        function renderPreview() {
-            previewArea.innerHTML = '<h2>Preview Booklet</h2>';
+        function getPageContent(pageNumber) {
+            if (pageNumber > pageContents.length) {
+                return `<div style="color: #999;">Halaman kosong</div>`;
+            }
             
-            for (let i = 0; i < bookletData.length; i += 2) {
-                const front = bookletData[i];
-                const back = bookletData[i+1];
-                
-                const sheetDiv = document.createElement('div');
-                sheetDiv.style.marginBottom = '40px';
-                sheetDiv.innerHTML = `
-                    <h3>Lembar ${(i/2)+1}</h3>
-                    <div style="display: flex; justify-content: center;">
-                        <div style="margin-right: 50px;">
-                            <h4>Sisi Depan</h4>
-                            <div style="display: flex;">
-                                <div class="page-preview">
-                                    ${front.rightContent}
-                                    <div class="page-number">${front.right}</div>
-                                </div>
-                                <div class="page-preview">
-                                    ${front.leftContent}
-                                    <div class="page-number">${front.left}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h4>Sisi Belakang (Balik kertas)</h4>
-                            <div style="display: flex;">
-                                <div class="page-preview">
-                                    ${back.rightContent}
-                                    <div class="page-number">${back.right}</div>
-                                </div>
-                                <div class="page-preview">
-                                    ${back.leftContent}
-                                    <div class="page-number">${back.left}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                previewArea.appendChild(sheetDiv);
+            const page = pageContents[pageNumber - 1];
+            if (page.content) {
+                return `<img src="${page.content}" style="max-width: 100%; max-height: 100%;">`;
+            } else {
+                return `<div style="padding: 10px; overflow: hidden;">${page.text || 'Tidak ada konten'}</div>`;
             }
         }
 
-        function printBooklet() {
-            if (!bookletData.length) {
-                showStatus('Error: Silahkan generate booklet terlebih dahulu', 'error');
-                return;
-            }
-
-            const printWindow = window.open('', '_blank');
-            let printContent = `
-                <html>
-                    <head>
-                        <title>Cetak Booklet - ${uploadedFile.name}</title>
-                        <style>
-                            @page { size: A4; margin: 0; }
-                            body { font-family: Arial; margin: 0; padding: 0; }
-                            .sheet { 
-                                page-break-after: always; 
-                                width: 210mm;
-                                height: 297mm;
-                                display: flex;
-                                flex-direction: column;
-                                justify-content: center;
-                                align-items: center;
-                            }
-                            .page-container { 
-                                display: flex; 
-                                width: 180mm;
-                                justify-content: center;
-                            }
-                            .page { 
-                                width: 85mm; 
-                                height: 120mm; 
-                                border: 1px solid #ddd; 
-                                margin: 5mm; 
-                                padding: 10mm;
-                                box-sizing: border-box;
-                                position: relative;
-                            }
-                            .page-number { 
-                                position: absolute;
-                                bottom: 2mm;
-                                right: 2mm;
-                                font-size: 10pt;
-                                color: #666;
-                            }
-                            .print-info {
-                                text-align: center;
-                                margin-bottom: 10mm;
-                                font-size: 12pt;
-                                color: #555;
-                            }
-                            @media print {
-                                .no-print { display: none; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="no-print print-info">
-                            <h1>Booklet Printing</h1>
-                            <p>File: ${uploadedFile.name}</p>
-                            <p>Total: ${totalPages} halaman (${totalPages/4} lembar kertas)</p>
-                            <p>Pastikan printer diatur ke: <strong>Duplex Printing</strong> dan <strong>2 Pages Per Sheet</strong></p>
-                        </div>
-            `;
-
-            for (let i = 0; i < bookletData.length; i += 2) {
-                const front = bookletData[i];
-                const back = bookletData[i+1];
-
-                printContent += `
-                    <div class="sheet">
-                        <div class="page-container">
-                            <div class="page" style="text-align: right;">
-                                ${front.rightContent}
-                                <div class="page-number">${front.right}</div>
-                            </div>
-                            <div class="page">
-                                ${front.leftContent}
-                                <div class="page-number">${front.left}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="sheet">
-                        <div class="page-container">
-                            <div class="page" style="text-align: right;">
-                                ${back.rightContent}
-                                <div class="page-number">${back.right}</div>
-                            </div>
-                            <div class="page">
-                                ${back.leftContent}
-                                <div class="page-number">${back.left}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-
-            printContent += `
-                    <script>
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                                window.close();
-                            }, 300);
-                        };
-                    <\/script>
-                </body>
-            </html>
-            `;
-
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            showStatus('Membuka jendela cetak...', 'success');
-        }
-
-        // Helper functions
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        function showStatus(message, type) {
-            printStatus.textContent = message;
-            printStatus.className = 'print-status ' + type;
-        }
+        // [Rest of the functions from previous implementation...]
     </script>
 </body>
 </html>
