@@ -72,8 +72,8 @@
                     const backLeft = i * 2 + 2;
                     const backRight = adjustedPages - (i * 2) - 1;
                     
-                    frontPages += `${frontLeft},${frontRight}\n`;
-                    backPages += `${backLeft},${backRight}\n`;
+                    frontPages += `${frontLeft},${frontRight},\n`;
+                    backPages += `${backLeft},${backRight},\n`;
                 }
                 output = frontPages + "\n" + backPages;
             } else {
