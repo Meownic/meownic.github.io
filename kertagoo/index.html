@@ -70,6 +70,21 @@
      atau bisa juga ke mailboxdrive.com -->https://feeldreams.github.io/
 
 <script type="text/javascript">
+		function gantiBackground() {
+    var wallpaper = document.getElementById('wallpaper');
+    
+    // Mengecek apakah layar di bawah 768px atau dalam posisi Portrait (HP berdiri)
+    if (window.innerWidth <= 768 || window.innerHeight > window.innerWidth) {
+      wallpaper.src = "kertago_potrait.jpeg"; // Ganti dengan link gambar untuk HP
+    } else {
+      wallpaper.src = "kertago_bg.jpeg"; // Link gambar untuk Laptop / Landscape
+    }
+  }
+
+  // Jalankan saat halaman dibuka, di-resize, atau orientasi HP berubah
+  window.addEventListener('load', gantiBackground);
+  window.addEventListener('resize', gantiBackground);
+  window.addEventListener('orientationchange', gantiBackground);
   
        async function jawab(){await swals.fire('Kirim pesan ke<br>WhatsApp aku, ya!');window.location = "https://api.whatsapp.com/send?phone=&text=" + pesanwhatsapp;}
 
