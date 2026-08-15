@@ -90,14 +90,23 @@
        async function jawab(){await swals.fire('Kirim pesan ke<br>WhatsApp aku, ya!');window.location = "https://api.whatsapp.com/send?phone=&text=" + pesanwhatsapp;}
 
        async function audioAwal(){
- 		 // Menggunakan URL direct raw agar tidak terkena delay redirect
-		  audio = new Audio('https://raw.githubusercontent.com/Meownic/meownic.github.io/main/kertagoo/bestfriend-audiofix.mp3');
+		  // Pakai link raw biar proses narik datanya lebih cepet dan direct
+		  audio = new Audio('https://raw.githubusercontent.com/Meownic/meownic.github.io/main/kertagoo/bestfriend-audiofix.mp3?raw=true');
 		  
-		  // Memaksa browser untuk melakukan preload data audio secara otomatis
-		  audio.preload = 'auto';
+		  // Nahan web supaya nunggu audio selesai loading (bisa diputar sampai habis tanpa putus)
+		  audio.addEventListener('canplaythrough', function() {
+		    // UI web (amplop) BARU AKAN MUNCUL setelah audio beneran siap
+		    showDiv();
+		  }, false);
+		
+		  // Fallback jaga-jaga kalau internet error/file gagal ke-load, biar webnya ga stuck putih doang
+		  audio.addEventListener('error', function() {
+		    console.log("Audio gagal di-load, tapi web tetap dilanjutkan.");
+		    showDiv(); 
+		  });
+		
+		  // Paksa browser mulai narik data audionya sekarang
 		  audio.load();
-		  
-		  showDiv();
 		} 
 		audioAwal();
 		
